@@ -3,6 +3,14 @@ import { useApp } from '../../context/AppContext';
 import { User } from '../../types';
 import { Search, Trash2, Edit2, X, User as UserIcon, Mail, Shield, Calendar, CheckCircle, Plus } from 'lucide-react';
 
+// Helper to generate UUID for new users
+const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
+
 const UserManagement: React.FC = () => {
     const { data, deleteUser, updateUser, addUser } = useApp();
     const [searchTerm, setSearchTerm] = useState('');
@@ -42,7 +50,7 @@ const UserManagement: React.FC = () => {
             if (isAdding) {
                 // Create new user logic
                 const newUser: User = {
-                    id: Date.now().toString(), // Temp ID generation
+                    id: generateUUID(), // Use proper UUID format
                     name: editingUser.name || '',
                     email: editingUser.email || '',
                     role: editingUser.role || 'User',

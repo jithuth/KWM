@@ -315,13 +315,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setData(prev => ({ ...prev, users: [item, ...prev.users] }));
         if (!isDemoMode) {
             const { error } = await supabase.from('profiles').insert([{
-                id: item.id, // Note: Normally ID comes from Auth, but if adding manually to profile table
+                id: item.id, 
                 email: item.email,
                 full_name: item.name,
                 role: item.role,
                 status: item.status
             }]);
-             if (error) console.error("Error adding user:", error);
+             if (error) console.error("Error adding user:", error.message || error);
              else fetchData();
         }
     };

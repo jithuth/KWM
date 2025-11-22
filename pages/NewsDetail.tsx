@@ -9,7 +9,7 @@ const NewsDetail: React.FC = () => {
     const newsItem = data.news.find(n => n.id === id);
 
     if (!newsItem) {
-        return <div className="text-center py-20">Article not found</div>;
+        return <div className="text-center py-20 text-gray-500">Article not found</div>;
     }
 
     const renderMedia = () => {
@@ -25,7 +25,7 @@ const NewsDetail: React.FC = () => {
             }
 
             return (
-                <div className="w-full h-64 md:h-96 bg-black">
+                <div className="w-full h-56 md:h-80 bg-black">
                     <iframe 
                         width="100%" 
                         height="100%" 
@@ -41,7 +41,7 @@ const NewsDetail: React.FC = () => {
         
         if (newsItem.mediaType === 'video' && newsItem.videoUrl) {
             return (
-                <video controls className="w-full h-auto max-h-96 bg-black" poster={newsItem.imageUrl}>
+                <video controls className="w-full h-auto max-h-80 bg-black" poster={newsItem.imageUrl}>
                     <source src={newsItem.videoUrl} type="video/mp4" />
                     Your browser does not support the video tag.
                 </video>
@@ -52,43 +52,43 @@ const NewsDetail: React.FC = () => {
             <img 
                 src={newsItem.imageUrl} 
                 alt={newsItem.title} 
-                className="w-full h-64 md:h-96 object-cover"
+                className="w-full h-56 md:h-80 object-cover"
             />
         );
     };
 
     return (
-        <div className="max-w-4xl mx-auto">
-            <Link to="/news" className="inline-flex items-center text-emerald-600 mb-6 hover:underline">
-                <ArrowLeft size={16} className="mr-1" /> Back to News
+        <div className="max-w-3xl mx-auto">
+            <Link to="/news" className="inline-flex items-center text-emerald-600 mb-4 text-xs font-medium hover:underline">
+                <ArrowLeft size={14} className="mr-1" /> Back to News
             </Link>
             
-            <article className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <article className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 {renderMedia()}
                 
-                <div className="p-6 md:p-10">
-                    <div className="flex flex-wrap gap-4 items-center text-sm text-gray-500 mb-6">
-                        <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-medium">
+                <div className="p-6 md:p-8">
+                    <div className="flex flex-wrap gap-3 items-center text-xs text-gray-500 mb-4">
+                        <span className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-medium">
                             {newsItem.category}
                         </span>
                         <span className="flex items-center">
-                            <Calendar size={16} className="mr-2" />
+                            <Calendar size={14} className="mr-1.5" />
                             {newsItem.date}
                         </span>
                     </div>
 
-                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight">
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 leading-tight">
                         {newsItem.title}
                     </h1>
 
-                    <div className="prose prose-emerald max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
+                    <div className="prose prose-sm prose-emerald max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
                         {newsItem.content}
                     </div>
                     
-                    <div className="mt-10 pt-6 border-t border-gray-100 flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Written by Editorial Team</span>
-                        <button className="flex items-center space-x-2 text-gray-500 hover:text-emerald-600">
-                            <Share2 size={18} />
+                    <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between items-center">
+                        <span className="text-xs text-gray-400">Written by Editorial Team</span>
+                        <button className="flex items-center space-x-1.5 text-gray-500 hover:text-emerald-600 text-xs font-medium">
+                            <Share2 size={16} />
                             <span>Share</span>
                         </button>
                     </div>

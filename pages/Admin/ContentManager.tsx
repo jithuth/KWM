@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { generateNewsContent, summarizeText } from '../../services/geminiService';
 import { uploadFile } from '../../services/supabaseClient';
-import { Trash2, Sparkles, Plus, X, Newspaper, Briefcase, Users, Heart, Image as ImageIcon, Video, Youtube, Upload } from 'lucide-react';
+import { Trash2, Edit2, Sparkles, Plus, X, Newspaper, Briefcase, Users, Heart, Image as ImageIcon, Video, Youtube, Upload } from 'lucide-react';
 import { NewsItem, BusinessListing, Association, Obituary } from '../../types';
 
 type TabType = 'news' | 'business' | 'association' | 'obituary';
 
 const ContentManager: React.FC = () => {
-    const { data, addNews, deleteNews, addBusiness, deleteBusiness, addAssociation, deleteAssociation, addObituary, deleteObituary } = useApp();
+    const { data, addNews, updateNews, deleteNews, addBusiness, updateBusiness, deleteBusiness, addAssociation, updateAssociation, deleteAssociation, addObituary, updateObituary, deleteObituary } = useApp();
     const [activeTab, setActiveTab] = useState<TabType>('news');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     
     // Generic Form State
     const [formData, setFormData] = useState<any>({});
@@ -21,6 +22,7 @@ const ContentManager: React.FC = () => {
     const [videoFile, setVideoFile] = useState<File | null>(null);
 
     const resetForm = () => {
+        setEditingId(null);
         setImageFile(null);
         setVideoFile(null);
         if (activeTab === 'news') {
@@ -41,6 +43,13 @@ const ContentManager: React.FC = () => {
 
     const handleOpenModal = () => {
         resetForm();
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (item: any) => {
+        resetForm();
+        setFormData({ ...item });
+        setEditingId(item.id);
         setIsModalOpen(true);
     };
 
@@ -65,7 +74,7 @@ const ContentManager: React.FC = () => {
         setUploading(true);
 
         try {
-            const id = Date.now().toString();
+            const id = editingId || Date.now().toString();
             let finalImageUrl = formData.imageUrl;
             let finalVideoUrl = formData.videoUrl;
 
@@ -83,25 +92,37 @@ const ContentManager: React.FC = () => {
             }
 
             // If no image URL provided and no file uploaded, use placeholder
-            if (!finalImageUrl && !imageFile) {
+            if (!finalImageUrl && !imageFile && !editingId) {
                 finalImageUrl = 'https://via.placeholder.com/400x200?text=No+Image';
             }
 
             if (activeTab === 'news') {
-                await addNews({ 
+                const newsData = { 
                     ...formData, 
                     id, 
-                    date: new Date().toISOString().split('T')[0], 
-                    views: 0,
+                    date: formData.date || new Date().toISOString().split('T')[0], 
+                    views: formData.views || 0,
                     imageUrl: finalImageUrl,
                     videoUrl: finalVideoUrl
-                } as NewsItem);
+                } as NewsItem;
+                
+                if (editingId) await updateNews(newsData);
+                else await addNews(newsData);
+
             } else if (activeTab === 'business') {
-                await addBusiness({ ...formData, id } as BusinessListing);
+                const bizData = { ...formData, id } as BusinessListing;
+                if (editingId) await updateBusiness(bizData);
+                else await addBusiness(bizData);
+
             } else if (activeTab === 'association') {
-                await addAssociation({ ...formData, id, logoUrl: finalImageUrl } as Association);
+                const assocData = { ...formData, id, logoUrl: finalImageUrl } as Association;
+                if (editingId) await updateAssociation(assocData);
+                else await addAssociation(assocData);
+
             } else if (activeTab === 'obituary') {
-                await addObituary({ ...formData, id, imageUrl: finalImageUrl } as Obituary);
+                const obitData = { ...formData, id, imageUrl: finalImageUrl } as Obituary;
+                if (editingId) await updateObituary(obitData);
+                else await addObituary(obitData);
             }
             
             setIsModalOpen(false);
@@ -153,28 +174,40 @@ const ContentManager: React.FC = () => {
                             <tr key={item.id}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.title}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.category}</td>
-                                <td className="px-6 py-4 text-right"><button onClick={() => deleteNews(item.id)} className="text-red-600"><Trash2 size={18} /></button></td>
+                                <td className="px-6 py-4 text-right whitespace-nowrap">
+                                    <button onClick={() => handleEdit(item)} className="text-indigo-600 mr-3"><Edit2 size={18} /></button>
+                                    <button onClick={() => deleteNews(item.id)} className="text-red-600"><Trash2 size={18} /></button>
+                                </td>
                             </tr>
                         ))}
                         {activeTab === 'business' && data.businesses.map(item => (
                             <tr key={item.id}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.name}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.category}</td>
-                                <td className="px-6 py-4 text-right"><button onClick={() => deleteBusiness(item.id)} className="text-red-600"><Trash2 size={18} /></button></td>
+                                <td className="px-6 py-4 text-right whitespace-nowrap">
+                                    <button onClick={() => handleEdit(item)} className="text-indigo-600 mr-3"><Edit2 size={18} /></button>
+                                    <button onClick={() => deleteBusiness(item.id)} className="text-red-600"><Trash2 size={18} /></button>
+                                </td>
                             </tr>
                         ))}
                         {activeTab === 'association' && data.associations.map(item => (
                             <tr key={item.id}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.name}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.focus}</td>
-                                <td className="px-6 py-4 text-right"><button onClick={() => deleteAssociation(item.id)} className="text-red-600"><Trash2 size={18} /></button></td>
+                                <td className="px-6 py-4 text-right whitespace-nowrap">
+                                    <button onClick={() => handleEdit(item)} className="text-indigo-600 mr-3"><Edit2 size={18} /></button>
+                                    <button onClick={() => deleteAssociation(item.id)} className="text-red-600"><Trash2 size={18} /></button>
+                                </td>
                             </tr>
                         ))}
                         {activeTab === 'obituary' && data.obituaries.map(item => (
                             <tr key={item.id}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.name}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.dateOfDeath}</td>
-                                <td className="px-6 py-4 text-right"><button onClick={() => deleteObituary(item.id)} className="text-red-600"><Trash2 size={18} /></button></td>
+                                <td className="px-6 py-4 text-right whitespace-nowrap">
+                                    <button onClick={() => handleEdit(item)} className="text-indigo-600 mr-3"><Edit2 size={18} /></button>
+                                    <button onClick={() => deleteObituary(item.id)} className="text-red-600"><Trash2 size={18} /></button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -202,13 +235,13 @@ const ContentManager: React.FC = () => {
                         <input 
                             className="w-full p-2 border rounded mb-3" 
                             placeholder="Headline" 
-                            value={formData.title} 
+                            value={formData.title || ''} 
                             onChange={e => setFormData({...formData, title: e.target.value})} 
                         />
                         <div className="flex space-x-2 mb-3">
                             <select 
                                 className="p-2 border rounded flex-1"
-                                value={formData.category}
+                                value={formData.category || 'Local'}
                                 onChange={e => setFormData({...formData, category: e.target.value})}
                             >
                                 <option>Local</option>
@@ -257,7 +290,7 @@ const ContentManager: React.FC = () => {
                             <input 
                                 className="w-full p-2 border rounded mb-3" 
                                 placeholder="YouTube URL (e.g. https://youtube.com/watch?v=...)" 
-                                value={formData.videoUrl} 
+                                value={formData.videoUrl || ''} 
                                 onChange={e => setFormData({...formData, videoUrl: e.target.value})} 
                             />
                         )}
@@ -266,14 +299,14 @@ const ContentManager: React.FC = () => {
                             className="w-full p-2 border rounded mb-3" 
                             rows={3} 
                             placeholder="Summary"
-                            value={formData.summary}
+                            value={formData.summary || ''}
                             onChange={e => setFormData({...formData, summary: e.target.value})}
                         />
                         <textarea 
                             className="w-full p-2 border rounded mb-3" 
                             rows={6} 
                             placeholder="Content"
-                            value={formData.content}
+                            value={formData.content || ''}
                             onChange={e => setFormData({...formData, content: e.target.value})}
                         />
                     </>
@@ -281,34 +314,34 @@ const ContentManager: React.FC = () => {
             case 'business':
                 return (
                     <>
-                        <input className="w-full p-2 border rounded mb-3" placeholder="Business Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                        <input className="w-full p-2 border rounded mb-3" placeholder="Category" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
-                        <input className="w-full p-2 border rounded mb-3" placeholder="Location" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
-                        <input className="w-full p-2 border rounded mb-3" placeholder="Phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
-                        <textarea className="w-full p-2 border rounded mb-3" placeholder="Description" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                        <input className="w-full p-2 border rounded mb-3" placeholder="Business Name" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                        <input className="w-full p-2 border rounded mb-3" placeholder="Category" value={formData.category || ''} onChange={e => setFormData({...formData, category: e.target.value})} />
+                        <input className="w-full p-2 border rounded mb-3" placeholder="Location" value={formData.location || ''} onChange={e => setFormData({...formData, location: e.target.value})} />
+                        <input className="w-full p-2 border rounded mb-3" placeholder="Phone" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                        <textarea className="w-full p-2 border rounded mb-3" placeholder="Description" value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} />
                     </>
                 );
             case 'association':
                 return (
                     <>
-                         <input className="w-full p-2 border rounded mb-3" placeholder="Association Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                         <input className="w-full p-2 border rounded mb-3" placeholder="Association Name" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
                          <FileUpload label="Logo" accept="image/*" onChange={(e: any) => setImageFile(e.target.files[0])} />
-                         <input className="w-full p-2 border rounded mb-3" placeholder="Focus (e.g. Arts)" value={formData.focus} onChange={e => setFormData({...formData, focus: e.target.value})} />
-                         <input className="w-full p-2 border rounded mb-3" placeholder="President Name" value={formData.president} onChange={e => setFormData({...formData, president: e.target.value})} />
-                         <input className="w-full p-2 border rounded mb-3" placeholder="Contact Number" value={formData.contact} onChange={e => setFormData({...formData, contact: e.target.value})} />
+                         <input className="w-full p-2 border rounded mb-3" placeholder="Focus (e.g. Arts)" value={formData.focus || ''} onChange={e => setFormData({...formData, focus: e.target.value})} />
+                         <input className="w-full p-2 border rounded mb-3" placeholder="President Name" value={formData.president || ''} onChange={e => setFormData({...formData, president: e.target.value})} />
+                         <input className="w-full p-2 border rounded mb-3" placeholder="Contact Number" value={formData.contact || ''} onChange={e => setFormData({...formData, contact: e.target.value})} />
                     </>
                 );
              case 'obituary':
                 return (
                     <>
-                         <input className="w-full p-2 border rounded mb-3" placeholder="Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                         <input className="w-full p-2 border rounded mb-3" placeholder="Name" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
                          <FileUpload label="Photo" accept="image/*" onChange={(e: any) => setImageFile(e.target.files[0])} />
                          <div className="flex space-x-2 mb-3">
-                            <input type="number" className="w-1/2 p-2 border rounded" placeholder="Age" value={formData.age} onChange={e => setFormData({...formData, age: Number(e.target.value)})} />
-                            <input type="date" className="w-1/2 p-2 border rounded" value={formData.dateOfDeath} onChange={e => setFormData({...formData, dateOfDeath: e.target.value})} />
+                            <input type="number" className="w-1/2 p-2 border rounded" placeholder="Age" value={formData.age || ''} onChange={e => setFormData({...formData, age: Number(e.target.value)})} />
+                            <input type="date" className="w-1/2 p-2 border rounded" value={formData.dateOfDeath || ''} onChange={e => setFormData({...formData, dateOfDeath: e.target.value})} />
                          </div>
-                         <input className="w-full p-2 border rounded mb-3" placeholder="Place in Kuwait" value={formData.placeInKuwait} onChange={e => setFormData({...formData, placeInKuwait: e.target.value})} />
-                         <input className="w-full p-2 border rounded mb-3" placeholder="Place in Kerala" value={formData.placeInKerala} onChange={e => setFormData({...formData, placeInKerala: e.target.value})} />
+                         <input className="w-full p-2 border rounded mb-3" placeholder="Place in Kuwait" value={formData.placeInKuwait || ''} onChange={e => setFormData({...formData, placeInKuwait: e.target.value})} />
+                         <input className="w-full p-2 border rounded mb-3" placeholder="Place in Kerala" value={formData.placeInKerala || ''} onChange={e => setFormData({...formData, placeInKerala: e.target.value})} />
                     </>
                 );
         }
@@ -334,7 +367,7 @@ const ContentManager: React.FC = () => {
                 <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl max-w-2xl w-full p-6">
                         <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
-                            <h3 className="text-xl font-bold capitalize">Add New {activeTab}</h3>
+                            <h3 className="text-xl font-bold capitalize">{editingId ? `Edit ${activeTab}` : `Add New ${activeTab}`}</h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X /></button>
                         </div>
                         <form onSubmit={handleSubmit}>

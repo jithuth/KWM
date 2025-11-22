@@ -8,13 +8,18 @@ interface AppContextType {
     error: string | null;
     isDemoMode: boolean;
     addNews: (item: NewsItem) => Promise<void>;
+    updateNews: (item: NewsItem) => Promise<void>;
     deleteNews: (id: string) => Promise<void>;
     addBusiness: (item: BusinessListing) => Promise<void>;
+    updateBusiness: (item: BusinessListing) => Promise<void>;
     deleteBusiness: (id: string) => Promise<void>;
     addAssociation: (item: Association) => Promise<void>;
+    updateAssociation: (item: Association) => Promise<void>;
     deleteAssociation: (id: string) => Promise<void>;
     addObituary: (item: Obituary) => Promise<void>;
+    updateObituary: (item: Obituary) => Promise<void>;
     deleteObituary: (id: string) => Promise<void>;
+    addUser: (user: User) => Promise<void>;
     deleteUser: (id: string) => Promise<void>;
     updateUser: (user: User) => Promise<void>;
     refreshData: () => Promise<void>;
@@ -166,6 +171,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
+    const updateNews = async (item: NewsItem) => {
+        setData(prev => ({ ...prev, news: prev.news.map(n => n.id === item.id ? item : n) }));
+        if (!isDemoMode) {
+            const { error } = await supabase.from('news').update({
+                title: item.title,
+                summary: item.summary,
+                content: item.content,
+                category: item.category,
+                image_url: item.imageUrl,
+                date: item.date,
+                media_type: item.mediaType,
+                video_url: item.videoUrl
+            }).eq('id', item.id);
+            if (error) console.error("Error updating news:", error);
+        }
+    };
+
     const deleteNews = async (id: string) => {
         setData(prev => ({ ...prev, news: prev.news.filter(n => n.id !== id) }));
         if (!isDemoMode) {
@@ -190,6 +212,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
+    const updateBusiness = async (item: BusinessListing) => {
+        setData(prev => ({ ...prev, businesses: prev.businesses.map(b => b.id === item.id ? item : b) }));
+        if (!isDemoMode) {
+             const { error } = await supabase.from('businesses').update({
+                name: item.name,
+                category: item.category,
+                location: item.location,
+                phone: item.phone,
+                description: item.description,
+                rating: item.rating
+            }).eq('id', item.id);
+            if (error) console.error("Error updating business:", error);
+        }
+    };
+
     const deleteBusiness = async (id: string) => {
         setData(prev => ({ ...prev, businesses: prev.businesses.filter(b => b.id !== id) }));
         if (!isDemoMode) {
@@ -210,6 +247,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }]);
              if (error) console.error("Error adding association:", error);
              else fetchData();
+        }
+    };
+
+    const updateAssociation = async (item: Association) => {
+        setData(prev => ({ ...prev, associations: prev.associations.map(a => a.id === item.id ? item : a) }));
+        if (!isDemoMode) {
+            const { error } = await supabase.from('associations').update({
+                name: item.name,
+                focus: item.focus,
+                president: item.president,
+                contact: item.contact,
+                logo_url: item.logoUrl
+            }).eq('id', item.id);
+             if (error) console.error("Error updating association:", error);
         }
     };
 
@@ -237,6 +288,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
+    const updateObituary = async (item: Obituary) => {
+        setData(prev => ({ ...prev, obituaries: prev.obituaries.map(o => o.id === item.id ? item : o) }));
+        if (!isDemoMode) {
+            const { error } = await supabase.from('obituaries').update({
+                name: item.name,
+                age: item.age,
+                place_kerala: item.placeInKerala,
+                place_kuwait: item.placeInKuwait,
+                date_of_death: item.dateOfDeath,
+                image_url: item.imageUrl
+            }).eq('id', item.id);
+             if (error) console.error("Error updating obituary:", error);
+        }
+    };
+
     const deleteObituary = async (id: string) => {
         setData(prev => ({ ...prev, obituaries: prev.obituaries.filter(o => o.id !== id) }));
         if (!isDemoMode) {
@@ -245,6 +311,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     // --- User Operations ---
+    const addUser = async (item: User) => {
+        setData(prev => ({ ...prev, users: [item, ...prev.users] }));
+        if (!isDemoMode) {
+            const { error } = await supabase.from('profiles').insert([{
+                id: item.id, // Note: Normally ID comes from Auth, but if adding manually to profile table
+                email: item.email,
+                full_name: item.name,
+                role: item.role,
+                status: item.status
+            }]);
+             if (error) console.error("Error adding user:", error);
+             else fetchData();
+        }
+    };
+
     const deleteUser = async (id: string) => {
         setData(prev => ({ ...prev, users: prev.users.filter(u => u.id !== id) }));
         if (!isDemoMode) {
@@ -261,6 +342,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!isDemoMode) {
             await supabase.from('profiles').update({
                 full_name: updatedUser.name,
+                email: updatedUser.email,
                 role: updatedUser.role,
                 status: updatedUser.status
             }).eq('id', updatedUser.id);
@@ -270,11 +352,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (
         <AppContext.Provider value={{ 
             data, loading, error, isDemoMode,
-            addNews, deleteNews, 
-            addBusiness, deleteBusiness,
-            addAssociation, deleteAssociation,
-            addObituary, deleteObituary,
-            deleteUser, updateUser,
+            addNews, updateNews, deleteNews, 
+            addBusiness, updateBusiness, deleteBusiness,
+            addAssociation, updateAssociation, deleteAssociation,
+            addObituary, updateObituary, deleteObituary,
+            addUser, deleteUser, updateUser,
             refreshData: fetchData
         }}>
             {children}

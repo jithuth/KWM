@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User } from '../../types';
-import { Search, Trash2, Edit2, X, User as UserIcon, Mail, Shield, Calendar, CheckCircle } from 'lucide-react';
+import { Search, Trash2, Edit2, X, User as UserIcon, Mail, Shield, Calendar, CheckCircle, Plus } from 'lucide-react';
 
 const UserManagement: React.FC = () => {
-    const { data, deleteUser, updateUser } = useApp();
+    const { data, deleteUser, updateUser, addUser } = useApp();
     const [searchTerm, setSearchTerm] = useState('');
-    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
+    const [isAdding, setIsAdding] = useState(false);
 
     const filteredUsers = data.users.filter(user => 
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -20,14 +21,41 @@ const UserManagement: React.FC = () => {
     };
 
     const handleEdit = (user: User) => {
+        setIsAdding(false);
         setEditingUser({ ...user });
+    };
+
+    const handleAdd = () => {
+        setIsAdding(true);
+        setEditingUser({
+            name: '',
+            email: '',
+            role: 'User',
+            status: 'Active',
+            joinDate: new Date().toISOString().split('T')[0]
+        });
     };
 
     const handleSaveUser = (e: React.FormEvent) => {
         e.preventDefault();
         if (editingUser) {
-            updateUser(editingUser);
+            if (isAdding) {
+                // Create new user logic
+                const newUser: User = {
+                    id: Date.now().toString(), // Temp ID generation
+                    name: editingUser.name || '',
+                    email: editingUser.email || '',
+                    role: editingUser.role || 'User',
+                    status: editingUser.status || 'Active',
+                    joinDate: editingUser.joinDate || new Date().toISOString().split('T')[0]
+                };
+                addUser(newUser);
+            } else {
+                // Update existing user
+                updateUser(editingUser as User);
+            }
             setEditingUser(null);
+            setIsAdding(false);
         }
     };
 
@@ -52,15 +80,24 @@ const UserManagement: React.FC = () => {
         <div>
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
-                <div className="relative w-full md:w-64">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                    <input 
-                        type="text" 
-                        placeholder="Search users..." 
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
+                <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+                     <div className="relative w-full md:w-64">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <input 
+                            type="text" 
+                            placeholder="Search users..." 
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <button 
+                        onClick={handleAdd}
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center justify-center space-x-2 whitespace-nowrap"
+                    >
+                        <Plus size={20} />
+                        <span>Add User</span>
+                    </button>
                 </div>
             </div>
 
@@ -121,13 +158,13 @@ const UserManagement: React.FC = () => {
                 )}
             </div>
 
-            {/* Edit User Modal */}
+            {/* Edit/Add User Modal */}
             {editingUser && (
                 <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
                         <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-                            <h3 className="text-xl font-bold text-gray-800">Edit User</h3>
-                            <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-gray-600"><X size={24}/></button>
+                            <h3 className="text-xl font-bold text-gray-800">{isAdding ? 'Add New User' : 'Edit User'}</h3>
+                            <button onClick={() => {setEditingUser(null); setIsAdding(false);}} className="text-gray-400 hover:text-gray-600"><X size={24}/></button>
                         </div>
                         
                         <form onSubmit={handleSaveUser}>
@@ -141,6 +178,7 @@ const UserManagement: React.FC = () => {
                                             value={editingUser.name} 
                                             onChange={e => setEditingUser({...editingUser, name: e.target.value})}
                                             className="w-full pl-10 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                            required
                                         />
                                     </div>
                                 </div>
@@ -154,6 +192,7 @@ const UserManagement: React.FC = () => {
                                             value={editingUser.email} 
                                             onChange={e => setEditingUser({...editingUser, email: e.target.value})}
                                             className="w-full pl-10 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                            required
                                         />
                                     </div>
                                 </div>
@@ -192,23 +231,25 @@ const UserManagement: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Date Joined</label>
-                                    <div className="relative">
-                                        <Calendar size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                                        <input 
-                                            type="text" 
-                                            value={editingUser.joinDate} 
-                                            readOnly
-                                            className="w-full pl-10 p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
-                                        />
+                                {!isAdding && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Date Joined</label>
+                                        <div className="relative">
+                                            <Calendar size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                            <input 
+                                                type="text" 
+                                                value={editingUser.joinDate} 
+                                                readOnly
+                                                className="w-full pl-10 p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
 
                             <div className="pt-6 flex justify-end space-x-3">
-                                <button type="button" onClick={() => setEditingUser(null)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">Cancel</button>
-                                <button type="submit" className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium">Save Changes</button>
+                                <button type="button" onClick={() => {setEditingUser(null); setIsAdding(false);}} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">Cancel</button>
+                                <button type="submit" className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium">{isAdding ? 'Add User' : 'Save Changes'}</button>
                             </div>
                         </form>
                     </div>

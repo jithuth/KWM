@@ -3,17 +3,25 @@ import { GoogleGenAI } from "@google/genai";
 // Safely retrieve API key preventing "process is not defined" crash in browser
 const getApiKey = () => {
     try {
-        if (typeof process !== 'undefined' && process.env) {
-            return process.env.API_KEY || '';
+        // Check for global process polyfill or standard process
+        if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+            return process.env.API_KEY;
+        }
+        // Fallback for Vite's import.meta.env
+        // @ts-ignore
+        if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
+            // @ts-ignore
+            return import.meta.env.VITE_API_KEY;
         }
     } catch (e) {
-        // process not defined
+        // Ignore errors
     }
     return '';
 };
 
 const apiKey = getApiKey();
-const ai = new GoogleGenAI({ apiKey });
+// Initialize with a dummy key if missing to prevent immediate crash, but calls will fail gracefully
+const ai = new GoogleGenAI({ apiKey: apiKey || 'dummy_key' });
 
 export const generateNewsContent = async (headline: string, context: string): Promise<string> => {
     if (!apiKey) return "API Key missing. Cannot generate content.";

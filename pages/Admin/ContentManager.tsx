@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { generateNewsContent, summarizeText } from '../../services/geminiService';
+import { generateNewsContent, summarizeText, generateImage, enhanceArticleContent } from '../../services/geminiService';
 import { uploadFile } from '../../services/supabaseClient';
-import { Trash2, Edit2, Sparkles, Plus, X, Newspaper, Briefcase, Users, Heart, Image as ImageIcon, Video, Youtube, Upload } from 'lucide-react';
+import { Trash2, Edit2, Sparkles, Plus, X, Newspaper, Briefcase, Users, Heart, Image as ImageIcon, Video, Youtube, Upload, Bold, Italic, List, Heading1, Wand2, Loader2 } from 'lucide-react';
 import { NewsItem, BusinessListing, Association, Obituary } from '../../types';
 
 type TabType = 'news' | 'business' | 'association' | 'obituary';
@@ -12,6 +12,8 @@ const ContentManager: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('news');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isEnhancing, setIsEnhancing] = useState(false);
+    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     
@@ -67,6 +69,65 @@ const ContentManager: React.FC = () => {
         } finally {
             setIsGenerating(false);
         }
+    };
+
+    const handleGenerateImage = async () => {
+        if (!formData.title && !formData.summary) {
+            alert("Please enter a Title or Summary to generate an image.");
+            return;
+        }
+        
+        setIsGeneratingImage(true);
+        try {
+            const prompt = formData.summary || formData.title;
+            const base64Image = await generateImage(prompt);
+            if (base64Image) {
+                setFormData((prev: any) => ({ ...prev, imageUrl: base64Image }));
+            } else {
+                alert("Could not generate image. Please try again.");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to generate image.");
+        } finally {
+            setIsGeneratingImage(false);
+        }
+    };
+
+    const handleEnhanceContent = async () => {
+        if (!formData.content) return;
+        
+        setIsEnhancing(true);
+        try {
+            const enhanced = await enhanceArticleContent(formData.content);
+            setFormData((prev: any) => ({ ...prev, content: enhanced }));
+        } catch (error) {
+            console.error(error);
+            alert("Failed to enhance content");
+        } finally {
+            setIsEnhancing(false);
+        }
+    };
+
+    const insertMarkdown = (prefix: string, suffix: string = '') => {
+        const textarea = document.getElementById('content-editor') as HTMLTextAreaElement;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = formData.content || '';
+        const before = text.substring(0, start);
+        const selection = text.substring(start, end);
+        const after = text.substring(end);
+
+        const newContent = `${before}${prefix}${selection}${suffix}${after}`;
+        setFormData({ ...formData, content: newContent });
+        
+        // Reset focus and selection (approximate)
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+        }, 0);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -216,14 +277,45 @@ const ContentManager: React.FC = () => {
         );
     };
 
-    const FileUpload = ({ label, onChange, accept }: { label: string, onChange: (e: any) => void, accept: string }) => (
+    const FileUpload = ({ label, onChange, accept, extraButton }: { label: string, onChange: (e: any) => void, accept: string, extraButton?: React.ReactNode }) => (
         <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+            <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-700">{label}</label>
+                {extraButton}
+            </div>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors relative cursor-pointer">
                 <input type="file" onChange={onChange} accept={accept} className="absolute inset-0 opacity-0 cursor-pointer" />
                 <Upload className="mx-auto text-gray-400 mb-2" size={24} />
                 <span className="text-sm text-gray-500">Click to upload file</span>
             </div>
+        </div>
+    );
+
+    const RichTextToolbar = () => (
+        <div className="flex items-center space-x-1 mb-1 p-1.5 bg-gray-50 border border-gray-200 rounded-t-lg overflow-x-auto">
+            <button type="button" onClick={() => insertMarkdown('**', '**')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Bold">
+                <Bold size={16} />
+            </button>
+            <button type="button" onClick={() => insertMarkdown('*', '*')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Italic">
+                <Italic size={16} />
+            </button>
+            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+            <button type="button" onClick={() => insertMarkdown('## ')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Heading">
+                <Heading1 size={16} />
+            </button>
+            <button type="button" onClick={() => insertMarkdown('\n- ')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Bullet List">
+                <List size={16} />
+            </button>
+            <div className="flex-grow"></div>
+            <button 
+                type="button" 
+                onClick={handleEnhanceContent} 
+                disabled={isEnhancing || !formData.content}
+                className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${isEnhancing ? 'bg-gray-100 text-gray-400' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
+            >
+                {isEnhancing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                <span>Format with AI</span>
+            </button>
         </div>
     );
 
@@ -249,8 +341,9 @@ const ContentManager: React.FC = () => {
                                 <option>International</option>
                                 <option>Sports</option>
                             </select>
-                            <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className="bg-purple-100 text-purple-700 px-3 rounded flex items-center">
-                                <Sparkles size={16} className="mr-1" /> AI
+                            <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className="bg-purple-100 text-purple-700 px-3 rounded flex items-center text-sm font-medium hover:bg-purple-200 transition-colors">
+                                {isGenerating ? <Loader2 size={16} className="animate-spin mr-1" /> : <Sparkles size={16} className="mr-1" />} 
+                                Auto-Write
                             </button>
                         </div>
 
@@ -280,8 +373,30 @@ const ContentManager: React.FC = () => {
                         </div>
 
                         {/* Conditional Media Inputs */}
-                        <FileUpload label="Thumbnail Image" accept="image/*" onChange={(e: any) => setImageFile(e.target.files[0])} />
+                        <FileUpload 
+                            label="Thumbnail Image" 
+                            accept="image/*" 
+                            onChange={(e: any) => setImageFile(e.target.files[0])}
+                            extraButton={
+                                <button 
+                                    type="button" 
+                                    onClick={handleGenerateImage} 
+                                    disabled={isGeneratingImage}
+                                    className="text-xs text-purple-600 hover:text-purple-800 flex items-center"
+                                >
+                                    {isGeneratingImage ? <Loader2 size={12} className="animate-spin mr-1"/> : <Sparkles size={12} className="mr-1"/>}
+                                    Generate with AI
+                                </button>
+                            }
+                        />
                         
+                        {formData.imageUrl && formData.imageUrl.startsWith('data:') && (
+                            <div className="mb-3">
+                                <p className="text-xs text-green-600 mb-1">AI Image Generated</p>
+                                <img src={formData.imageUrl} alt="Generated" className="h-20 w-32 object-cover rounded border" />
+                            </div>
+                        )}
+
                         {formData.mediaType === 'video' && (
                             <FileUpload label="Video File (MP4)" accept="video/mp4" onChange={(e: any) => setVideoFile(e.target.files[0])} />
                         )}
@@ -296,19 +411,24 @@ const ContentManager: React.FC = () => {
                         )}
 
                         <textarea 
-                            className="w-full p-2 border rounded mb-3" 
+                            className="w-full p-2 border rounded mb-3 text-sm" 
                             rows={3} 
                             placeholder="Summary"
                             value={formData.summary || ''}
                             onChange={e => setFormData({...formData, summary: e.target.value})}
                         />
-                        <textarea 
-                            className="w-full p-2 border rounded mb-3" 
-                            rows={6} 
-                            placeholder="Content"
-                            value={formData.content || ''}
-                            onChange={e => setFormData({...formData, content: e.target.value})}
-                        />
+                        
+                        <div className="mb-3">
+                            <RichTextToolbar />
+                            <textarea 
+                                id="content-editor"
+                                className="w-full p-3 border border-t-0 rounded-b-lg focus:ring-0 text-sm leading-relaxed font-mono" 
+                                rows={12} 
+                                placeholder="Write your article here... Use Markdown or click 'Format with AI'"
+                                value={formData.content || ''}
+                                onChange={e => setFormData({...formData, content: e.target.value})}
+                            />
+                        </div>
                     </>
                 );
             case 'business':

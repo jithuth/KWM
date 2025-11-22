@@ -71,6 +71,8 @@ const UserManagement: React.FC = () => {
         switch (role) {
             case 'Admin': return 'bg-purple-100 text-purple-700';
             case 'Editor': return 'bg-blue-100 text-blue-700';
+            case 'Contributor': return 'bg-teal-100 text-teal-700';
+            case 'Viewer': return 'bg-slate-100 text-slate-700';
             default: return 'bg-gray-100 text-gray-700';
         }
     };
@@ -216,6 +218,8 @@ const UserManagement: React.FC = () => {
                                                 className="w-full pl-10 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                             >
                                                 <option value="User">User</option>
+                                                <option value="Viewer">Viewer</option>
+                                                <option value="Contributor">Contributor</option>
                                                 <option value="Editor">Editor</option>
                                                 <option value="Admin">Admin</option>
                                             </select>

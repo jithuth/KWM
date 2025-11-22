@@ -52,7 +52,7 @@ export interface User {
     id: string;
     name: string;
     email: string;
-    role: 'Admin' | 'Editor' | 'User';
+    role: 'Admin' | 'Editor' | 'User' | 'Viewer' | 'Contributor';
     status: 'Active' | 'Suspended' | 'Pending';
     joinDate: string;
 }

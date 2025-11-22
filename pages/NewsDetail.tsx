@@ -57,6 +57,39 @@ const NewsDetail: React.FC = () => {
         );
     };
 
+    // Simple custom markdown parser
+    const parseContent = (text: string) => {
+        if (!text) return null;
+        
+        return text.split('\n').map((line, index) => {
+            // Headings
+            if (line.startsWith('## ')) {
+                return <h2 key={index} className="text-xl font-bold text-gray-800 mt-6 mb-3">{line.replace('## ', '')}</h2>;
+            }
+            // List Items
+            if (line.startsWith('* ') || line.startsWith('- ')) {
+                return (
+                    <li key={index} className="ml-4 list-disc text-gray-700 mb-1">
+                        {line.replace(/^[*|-] /, '')}
+                    </li>
+                );
+            }
+            
+            // Regular Paragraphs with Bold support
+            const parts = line.split(/(\*\*.*?\*\*)/g);
+            return (
+                <p key={index} className="mb-4 text-gray-700 leading-relaxed">
+                    {parts.map((part, i) => {
+                        if (part.startsWith('**') && part.endsWith('**')) {
+                            return <strong key={i} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>;
+                        }
+                        return part;
+                    })}
+                </p>
+            );
+        });
+    };
+
     return (
         <div className="max-w-3xl mx-auto">
             <Link to="/news" className="inline-flex items-center text-emerald-600 mb-4 text-xs font-medium hover:underline">
@@ -81,8 +114,8 @@ const NewsDetail: React.FC = () => {
                         {newsItem.title}
                     </h1>
 
-                    <div className="prose prose-sm prose-emerald max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
-                        {newsItem.content}
+                    <div className="prose prose-sm prose-emerald max-w-none">
+                        {parseContent(newsItem.content)}
                     </div>
                     
                     <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between items-center">

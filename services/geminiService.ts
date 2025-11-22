@@ -52,3 +52,55 @@ export const summarizeText = async (text: string): Promise<string> => {
         return "Error generating summary.";
     }
 };
+
+export const enhanceArticleContent = async (content: string): Promise<string> => {
+    if (!apiKey) return content;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Rewrite the following news article content to be more professional, engaging, and grammatically correct. 
+            Use Markdown formatting to improve readability:
+            - Use ## for section headings where appropriate.
+            - Use **bold** for key terms or names.
+            - Use * bullet points for lists if present.
+            - Keep the length approximately the same.
+            
+            Content to rewrite:
+            ${content}`,
+        });
+        return response.text || content;
+    } catch (error) {
+        console.error("Gemini API Error:", error);
+        return content;
+    }
+};
+
+export const generateImage = async (prompt: string): Promise<string | null> => {
+    if (!apiKey) return null;
+
+    try {
+        // Using gemini-2.5-flash-image for image generation as per SDK instructions
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+                parts: [
+                    { text: `Generate a realistic, high-quality news style image for an article with this description: ${prompt}. Aspect ratio 16:9.` }
+                ]
+            }
+        });
+
+        // Iterate through parts to find the image
+        if (response.candidates && response.candidates[0].content.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData) {
+                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                }
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error("Gemini API Error (Image Gen):", error);
+        return null;
+    }
+};

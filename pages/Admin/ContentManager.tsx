@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { generateNewsContent, summarizeText, generateImage, enhanceArticleContent } from '../../services/geminiService';
+import { generateNewsContent, summarizeText, generateImage, enhanceArticleContent, translateText } from '../../services/geminiService';
 import { uploadFile } from '../../services/supabaseClient';
-import { Trash2, Edit2, Sparkles, Plus, X, Newspaper, Briefcase, Users, Heart, Image as ImageIcon, Video, Youtube, Upload, Bold, Italic, List, Heading1, Wand2, Loader2 } from 'lucide-react';
+import { Trash2, Edit2, Sparkles, Plus, X, Newspaper, Briefcase, Users, Heart, Image as ImageIcon, Video, Youtube, Upload, Bold, Italic, List, Heading1, Wand2, Loader2, Globe, Type } from 'lucide-react';
 import { NewsItem, BusinessListing, Association, Obituary } from '../../types';
 
 type TabType = 'news' | 'business' | 'association' | 'obituary';
@@ -13,6 +13,7 @@ const ContentManager: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isEnhancing, setIsEnhancing] = useState(false);
+    const [isTranslating, setIsTranslating] = useState(false);
     const [isGeneratingImage, setIsGeneratingImage] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -109,7 +110,21 @@ const ContentManager: React.FC = () => {
         }
     };
 
-    const insertMarkdown = (prefix: string, suffix: string = '') => {
+    const handleTranslate = async (lang: 'en' | 'ml') => {
+         if (!formData.content) return;
+         setIsTranslating(true);
+         try {
+             const translated = await translateText(formData.content, lang);
+             setFormData((prev: any) => ({ ...prev, content: translated }));
+         } catch(e) {
+             console.error(e);
+             alert("Translation failed");
+         } finally {
+             setIsTranslating(false);
+         }
+    };
+
+    const insertHtmlTag = (tag: string, style: string = '') => {
         const textarea = document.getElementById('content-editor') as HTMLTextAreaElement;
         if (!textarea) return;
 
@@ -120,10 +135,19 @@ const ContentManager: React.FC = () => {
         const selection = text.substring(start, end);
         const after = text.substring(end);
 
+        let prefix = `<${tag}>`;
+        let suffix = `</${tag}>`;
+        
+        if (style) {
+             prefix = `<${tag} style="${style}">`;
+        } else if (tag === 'font-ml') {
+            prefix = `<span class="font-malayalam">`;
+            suffix = `</span>`;
+        }
+
         const newContent = `${before}${prefix}${selection}${suffix}${after}`;
         setFormData({ ...formData, content: newContent });
         
-        // Reset focus and selection (approximate)
         setTimeout(() => {
             textarea.focus();
             textarea.setSelectionRange(start + prefix.length, end + prefix.length);
@@ -292,21 +316,51 @@ const ContentManager: React.FC = () => {
     );
 
     const RichTextToolbar = () => (
-        <div className="flex items-center space-x-1 mb-1 p-1.5 bg-gray-50 border border-gray-200 rounded-t-lg overflow-x-auto">
-            <button type="button" onClick={() => insertMarkdown('**', '**')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Bold">
+        <div className="flex items-center flex-wrap gap-1 mb-1 p-1.5 bg-gray-50 border border-gray-200 rounded-t-lg">
+            <button type="button" onClick={() => insertHtmlTag('b')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Bold">
                 <Bold size={16} />
             </button>
-            <button type="button" onClick={() => insertMarkdown('*', '*')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Italic">
+            <button type="button" onClick={() => insertHtmlTag('i')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Italic">
                 <Italic size={16} />
             </button>
-            <div className="w-px h-4 bg-gray-300 mx-1"></div>
-            <button type="button" onClick={() => insertMarkdown('## ')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Heading">
+             <button type="button" onClick={() => insertHtmlTag('h2')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Heading">
                 <Heading1 size={16} />
             </button>
-            <button type="button" onClick={() => insertMarkdown('\n- ')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Bullet List">
+             <button type="button" onClick={() => insertHtmlTag('ul')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="List">
                 <List size={16} />
             </button>
+             <button type="button" onClick={() => insertHtmlTag('li')} className="p-1.5 hover:bg-gray-200 rounded text-gray-700 text-xs font-bold" title="List Item">
+                • Item
+            </button>
+            
+            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+            
+            {/* Font Selection */}
+            <button 
+                type="button" 
+                onClick={() => insertHtmlTag('font-ml')} 
+                className="flex items-center space-x-1 p-1.5 hover:bg-gray-200 rounded text-gray-700 text-xs" 
+                title="Apply Malayalam Font"
+            >
+                <Type size={16} />
+                <span>Mal</span>
+            </button>
+
             <div className="flex-grow"></div>
+
+            {/* Translation Tools */}
+            <div className="flex items-center space-x-1">
+                <button 
+                    type="button" 
+                    onClick={() => handleTranslate('ml')} 
+                    disabled={isTranslating}
+                    className="flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100"
+                >
+                    {isTranslating ? <Loader2 size={14} className="animate-spin" /> : <Globe size={14} />}
+                    <span>To Malayalam</span>
+                </button>
+            </div>
+
             <button 
                 type="button" 
                 onClick={handleEnhanceContent} 
@@ -314,7 +368,7 @@ const ContentManager: React.FC = () => {
                 className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${isEnhancing ? 'bg-gray-100 text-gray-400' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
             >
                 {isEnhancing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-                <span>Format with AI</span>
+                <span>AI Format</span>
             </button>
         </div>
     );
@@ -419,15 +473,17 @@ const ContentManager: React.FC = () => {
                         />
                         
                         <div className="mb-3">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Article Content</label>
                             <RichTextToolbar />
                             <textarea 
                                 id="content-editor"
                                 className="w-full p-3 border border-t-0 rounded-b-lg focus:ring-0 text-sm leading-relaxed font-mono" 
                                 rows={12} 
-                                placeholder="Write your article here... Use Markdown or click 'Format with AI'"
+                                placeholder="Write your article here... HTML tags are supported for advanced formatting."
                                 value={formData.content || ''}
                                 onChange={e => setFormData({...formData, content: e.target.value})}
                             />
+                            <p className="text-xs text-gray-400 mt-1">Supports HTML tags for rich text.</p>
                         </div>
                     </>
                 );
@@ -485,23 +541,59 @@ const ContentManager: React.FC = () => {
 
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl max-w-2xl w-full p-6">
-                        <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
+                    <div className="bg-white rounded-xl max-w-4xl w-full p-6">
+                         <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
                             <h3 className="text-xl font-bold capitalize">{editingId ? `Edit ${activeTab}` : `Add New ${activeTab}`}</h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X /></button>
                         </div>
-                        <form onSubmit={handleSubmit}>
-                            {renderFormFields()}
-                            <div className="pt-4 flex justify-end space-x-3">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">Cancel</button>
-                                <button 
-                                    type="submit" 
-                                    disabled={uploading}
-                                    className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center"
-                                >
-                                    {uploading ? 'Saving...' : 'Save'}
-                                </button>
-                            </div>
+                        <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-6">
+                             {/* Main Editor Area */}
+                             <div className="flex-1">
+                                {renderFormFields()}
+                             </div>
+
+                             {/* Sidebar Options for News */}
+                             {activeTab === 'news' && (
+                                 <div className="w-full md:w-64 space-y-4 border-l pl-0 md:pl-6 border-gray-100">
+                                     <div>
+                                         <h4 className="font-bold text-xs text-gray-500 uppercase mb-2">Publishing</h4>
+                                         <button 
+                                            type="submit" 
+                                            disabled={uploading}
+                                            className="w-full py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium text-sm flex justify-center items-center"
+                                        >
+                                            {uploading ? 'Saving...' : 'Publish Now'}
+                                        </button>
+                                     </div>
+                                     
+                                     <div>
+                                         <h4 className="font-bold text-xs text-gray-500 uppercase mb-2">Date</h4>
+                                          <input type="date" className="w-full p-2 border rounded text-sm" value={formData.date || ''} onChange={e => setFormData({...formData, date: e.target.value})} />
+                                     </div>
+                                     
+                                     <div>
+                                          <h4 className="font-bold text-xs text-gray-500 uppercase mb-2">Stats</h4>
+                                          <input type="number" className="w-full p-2 border rounded text-sm" placeholder="Views" value={formData.views || 0} onChange={e => setFormData({...formData, views: Number(e.target.value)})} />
+                                     </div>
+
+                                     <div className="bg-blue-50 p-3 rounded-lg">
+                                         <h4 className="font-bold text-xs text-blue-800 mb-1 flex items-center"><Globe size={12} className="mr-1"/> Language Tools</h4>
+                                         <p className="text-xs text-blue-600 mb-2">Use the toolbar to translate content to Malayalam.</p>
+                                     </div>
+                                 </div>
+                             )}
+                             
+                             {activeTab !== 'news' && (
+                                  <div className="w-full md:w-auto flex justify-end items-end">
+                                        <button 
+                                            type="submit" 
+                                            disabled={uploading}
+                                            className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center"
+                                        >
+                                            {uploading ? 'Saving...' : 'Save'}
+                                        </button>
+                                  </div>
+                             )}
                         </form>
                     </div>
                 </div>

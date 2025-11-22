@@ -2,6 +2,7 @@ import React from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
 
 // Public Components
 import Layout from './components/Layout';
@@ -72,11 +73,13 @@ const AppRoutes = () => {
 const App: React.FC = () => {
     return (
         <AuthProvider>
-            <AppProvider>
-                <Router>
-                    <AppRoutes />
-                </Router>
-            </AppProvider>
+            <LanguageProvider>
+                <AppProvider>
+                    <Router>
+                        <AppRoutes />
+                    </Router>
+                </AppProvider>
+            </LanguageProvider>
         </AuthProvider>
     );
 };

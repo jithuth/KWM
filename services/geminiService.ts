@@ -29,7 +29,7 @@ export const generateNewsContent = async (headline: string, context: string): Pr
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Write a professional news article (approx 200 words) based on this headline: "${headline}" and these context notes: "${context}". formatting should be plain text paragraphs.`,
+            contents: `Write a professional news article (approx 200 words) based on this headline: "${headline}" and these context notes: "${context}". The response should use HTML tags for formatting (e.g., <p>, <h2>, <ul>, <li>, <strong>).`,
         });
         return response.text || "Failed to generate content.";
     } catch (error) {
@@ -60,10 +60,11 @@ export const enhanceArticleContent = async (content: string): Promise<string> =>
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `Rewrite the following news article content to be more professional, engaging, and grammatically correct. 
-            Use Markdown formatting to improve readability:
-            - Use ## for section headings where appropriate.
-            - Use **bold** for key terms or names.
-            - Use * bullet points for lists if present.
+            Use HTML formatting to improve readability:
+            - Use <h2> for section headings.
+            - Use <strong> for key terms or names.
+            - Use <ul><li> for lists if present.
+            - Use <p> for paragraphs.
             - Keep the length approximately the same.
             
             Content to rewrite:
@@ -73,6 +74,26 @@ export const enhanceArticleContent = async (content: string): Promise<string> =>
     } catch (error) {
         console.error("Gemini API Error:", error);
         return content;
+    }
+};
+
+export const translateText = async (text: string, targetLang: 'en' | 'ml'): Promise<string> => {
+    if (!apiKey) return text;
+    const langName = targetLang === 'ml' ? 'Malayalam' : 'English';
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Translate the following text to ${langName}. Maintain the original HTML formatting or structure. 
+            If translating to Malayalam, ensure proper grammar and vocabulary suitable for a news portal.
+            
+            Text:
+            ${text}`,
+        });
+        return response.text || text;
+    } catch (error) {
+        console.error("Gemini Translation Error:", error);
+        return text;
     }
 };
 

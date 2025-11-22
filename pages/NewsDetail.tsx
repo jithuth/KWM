@@ -14,7 +14,6 @@ const NewsDetail: React.FC = () => {
 
     const renderMedia = () => {
         if (newsItem.mediaType === 'youtube' && newsItem.videoUrl) {
-            // Simple extraction of ID for standard youtube URLs
             let videoId = newsItem.videoUrl.split('v=')[1];
             const ampersandPosition = videoId?.indexOf('&');
             if (ampersandPosition !== -1) {
@@ -57,25 +56,15 @@ const NewsDetail: React.FC = () => {
         );
     };
 
-    // Simple custom markdown parser
-    const parseContent = (text: string) => {
-        if (!text) return null;
-        
+    // Fallback markdown parser if content doesn't seem to be HTML
+    const parseMarkdown = (text: string) => {
         return text.split('\n').map((line, index) => {
-            // Headings
             if (line.startsWith('## ')) {
                 return <h2 key={index} className="text-xl font-bold text-gray-800 mt-6 mb-3">{line.replace('## ', '')}</h2>;
             }
-            // List Items
             if (line.startsWith('* ') || line.startsWith('- ')) {
-                return (
-                    <li key={index} className="ml-4 list-disc text-gray-700 mb-1">
-                        {line.replace(/^[*|-] /, '')}
-                    </li>
-                );
+                return <li key={index} className="ml-4 list-disc text-gray-700 mb-1">{line.replace(/^[*|-] /, '')}</li>;
             }
-            
-            // Regular Paragraphs with Bold support
             const parts = line.split(/(\*\*.*?\*\*)/g);
             return (
                 <p key={index} className="mb-4 text-gray-700 leading-relaxed">
@@ -88,6 +77,10 @@ const NewsDetail: React.FC = () => {
                 </p>
             );
         });
+    };
+
+    const isHtml = (text: string) => {
+        return /<[a-z][\s\S]*>/i.test(text);
     };
 
     return (
@@ -115,7 +108,11 @@ const NewsDetail: React.FC = () => {
                     </h1>
 
                     <div className="prose prose-sm prose-emerald max-w-none">
-                        {parseContent(newsItem.content)}
+                        {isHtml(newsItem.content) ? (
+                            <div dangerouslySetInnerHTML={{ __html: newsItem.content }} />
+                        ) : (
+                            parseMarkdown(newsItem.content)
+                        )}
                     </div>
                     
                     <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between items-center">

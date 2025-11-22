@@ -73,16 +73,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (!error) return {};
 
-        // Fallback: If login fails AND we don't have explicit env vars, allow demo login
-        if (!process.env.SUPABASE_URL) {
-            if (email === 'admin@kmp.com' && password === 'admin') {
-                const demoUser = { id: 'demo-admin', email, role: 'authenticated' } as User;
-                const demoSession = { user: demoUser, access_token: 'demo', token_type: 'bearer' } as Session;
-                setSession(demoSession);
-                setUser(demoUser);
-                setIsAdmin(true);
-                return {};
-            }
+        // Fallback: If login fails (e.g. bad credentials or connection issue), allow demo login
+        // This ensures the demo admin works even if the real backend is unreachable.
+        if (email === 'admin@kmp.com' && password === 'admin') {
+            const demoUser = { id: 'demo-admin', email, role: 'authenticated' } as User;
+            const demoSession = { user: demoUser, access_token: 'demo', token_type: 'bearer' } as Session;
+            setSession(demoSession);
+            setUser(demoUser);
+            setIsAdmin(true);
+            return {};
         }
 
         return { error: error.message };
